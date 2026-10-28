@@ -51,6 +51,18 @@ def ask_number(prompt, number_type):
             print("Invalid! Please type a valid value")
 
 
+def ask_option(prompt, options, option_type):
+    # keep asking until the answer is one of the options
+    while True:
+        try:
+            answer = option_type(input(prompt).lower())
+            if answer in options:
+                return answer
+            print("Invalid! Please choose one of the options")
+        except ValueError:
+            print("Invalid! Please type a valid value")
+
+
 if TEST_MODE:
     #fixed values just for testing
     age = 21
@@ -64,13 +76,7 @@ else:
     age = ask_number("Enter your age: ", int)
     weight = ask_number("Enter your weight in kg: ", float)
     height = ask_number("Enter your height in cm: ", float)
-
-    while True:
-        sex = input("Enter your sex (male/female): ").lower()
-        if sex in BMR_COEFFICIENTS:
-            break
-        print("Invalid! Please type a valid value (e.g. male or female)")
-
+    sex = ask_option("Enter your sex (male/female): ", BMR_COEFFICIENTS, str)
     print("Activity level:")
     print("0 - Not used")
     print("1 - Sedentary (little or no exercise)")
@@ -78,16 +84,7 @@ else:
     print("3 - Moderate (3-5 days/week)")
     print("4 - Intense (6-7 days/week)")
     print("5 - Very intense (twice a day or heavy physical work)")
-
-    while True:
-        try:
-            activity = int(input("Enter your activity level: "))
-            if activity > 5 or activity < 0:
-                print("Invalid! Please enter a value between 0 - 5")
-            else:
-                break
-        except ValueError:
-            print("Invalid! Please enter a valid value (e.g. 3)")
+    activity = ask_option("Enter your activity level: ", ACTIVITY_FACTORS, int)
 
 
 activity_factor = ACTIVITY_FACTORS[activity]
