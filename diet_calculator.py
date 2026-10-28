@@ -1,7 +1,7 @@
 # === TEST MODE ===
 #True = uses fixed test values (no typing)
 #False = asks the user (normal program)
-TEST_MODE = False
+TEST_MODE = True
 
 ACTIVITY_FACTORS = {
     # activity level: factor
@@ -43,7 +43,7 @@ if TEST_MODE:
     weight = 72.0
     height = 173.0
     sex = "male"
-    activity = -3
+    activity = 3
 
 else:
     # real program: asks the user
@@ -99,7 +99,7 @@ else:
             else:
                 break
         except ValueError:
-                print("Invalid! Please enter a valid value (e.g. 3)") 
+            print("Invalid! Please enter a valid value (e.g. 3)")
 
 
 activity_factor = ACTIVITY_FACTORS[activity]
