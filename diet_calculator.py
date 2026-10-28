@@ -1,7 +1,7 @@
 # === TEST MODE ===
 #True = uses fixed test values (no typing)
 #False = asks the user (normal program)
-TEST_MODE = True
+TEST_MODE = False
 
 ACTIVITY_FACTORS = {
     # activity level: factor
@@ -43,14 +43,46 @@ if TEST_MODE:
     weight = 72.0
     height = 173.0
     sex = "male"
-    activity = 3
+    activity = -3
 
 else:
     # real program: asks the user
-    age = int(input("Enter your age: "))
-    weight = float(input("Enter your weight in kg: "))
-    height = float(input("Enter your height in centimeters: "))
-    sex = input("Enter your sex (male/female): ").lower()
+    while True:
+        try:
+            age = int(input("Enter your age: "))
+            if age <= 0:
+                print("Invalid! Please type a valid age")
+            else:
+                break
+        except ValueError:
+            print("Invalid! Please type a whole number (e.g. 22)")
+
+    while True:
+        try:
+            weight = float(input("Enter your weight in kg: ").replace(",", "."))
+            if weight <= 0:
+                print("Invalid! Please type a valid weight")
+            else:
+                break
+        except ValueError:
+            print("Invalid! Please type a valid value (e.g. 65 or 65.5)")
+
+    while True:
+        try:
+            height = float(input("Enter your height in cm: ").replace(",", "."))
+            if height <= 0:
+                print("Invalid! Please type a valid height")
+            else:
+                break
+        except ValueError:
+            print("Invalid! Please type a valid value (e.g. 170 or 170.5)")
+
+    while True:
+        sex = input("Enter your sex (male/female): ").lower()
+        if sex in BMR_COEFFICIENTS:
+            break
+        print("Invalid! Please type a valid value (e.g. male or female)")
+
     print("Activity level:")
     print("0 - Not used")
     print("1 - Sedentary (little or no exercise)")
@@ -58,7 +90,16 @@ else:
     print("3 - Moderate (3-5 days/week)")
     print("4 - Intense (6-7 days/week)")
     print("5 - Very intense (twice a day or heavy physical work)")
-    activity = int(input("Enter your activity level: "))
+
+    while True:
+        try:
+            activity = int(input("Enter your activity level: "))
+            if activity > 5 or activity < 0:
+                print("Invalid! Please enter a value between 0 - 5")
+            else:
+                break
+        except ValueError:
+                print("Invalid! Please enter a valid value (e.g. 3)") 
 
 
 activity_factor = ACTIVITY_FACTORS[activity]

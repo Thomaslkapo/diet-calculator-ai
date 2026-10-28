@@ -29,13 +29,13 @@ python diet_calculator.py
 
 ## 🗺️ Roadmap
 
-### Phase 1 – Calculator *(in progress)*
+### Phase 1 – Calculator ✅ *(done)*
 - [x] User input: age, weight (kg), height (cm) and sex
 - [x] Physical activity level
 - [x] BMI calculation
 - [x] Basal Metabolic Rate (BMR) — Harris-Benedict equation (1984 revision, matches WebDiet)
 - [x] Total Daily Energy Expenditure (TDEE = BMR × activity factor)
-- [ ] Input validation
+- [x] Input validation
 
 ### Phase 2 – Macronutrients
 - [ ] Split calories into protein, carbohydrates and fat
