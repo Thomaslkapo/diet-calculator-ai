@@ -6,11 +6,11 @@ TEST_MODE = True
 ACTIVITY_FACTORS = {
     # activity level: factor
     # (based on weekly exercise frequency)
-    0: 1.0, 
-    1: 1.2, 
-    2: 1.375, 
-    3: 1.55, 
-    4: 1.725, 
+    0: 1.0,
+    1: 1.2,
+    2: 1.375,
+    3: 1.55,
+    4: 1.725,
     5: 1.9}
 
 # Harris-Benedict revised (Roza & Shizgal, 1984)
@@ -30,7 +30,12 @@ def calculate_bmr(sex, weight, height_cm, age):
     # Harris-Benedict formula
     bmr = (coef["base"] + coef["weight"] * weight + coef["height"] * height_cm - coef["age"] * age)
     return bmr
-   
+
+
+def calculate_tdee(bmr, activity_factor):
+    tdee = bmr * activity_factor
+    return tdee
+
 
 if TEST_MODE:
     #fixed values just for testing
@@ -40,7 +45,7 @@ if TEST_MODE:
     sex = "male"
     activity = 3
 
-else:   
+else:
     # real program: asks the user
     age = int(input("Enter your age: "))
     weight = float(input("Enter your weight in kg: "))
@@ -54,15 +59,17 @@ else:
     print("4 - Intense (6-7 days/week)")
     print("5 - Very intense (twice a day or heavy physical work)")
     activity = int(input("Enter your activity level: "))
-    
+
 
 activity_factor = ACTIVITY_FACTORS[activity]
 bmi = calculate_bmi(weight, height)
 bmr = calculate_bmr(sex, weight, height, age)
+tdee = calculate_tdee(bmr, activity_factor)
 
 #show data
 print(f"Age: {age} | Weight: {weight} kg | Height: {height} cm | Sex: {sex} | Activity: {activity} | Factor: {activity_factor}")
 print(f"BMI: {bmi:.2f}")
 print(f"BMR: {bmr:.0f} kcal/day")
+print(f"TDEE: {tdee:.0f} kcal/day")
 
 

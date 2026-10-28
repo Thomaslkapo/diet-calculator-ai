@@ -33,8 +33,8 @@ python diet_calculator.py
 - [x] User input: age, weight (kg), height (cm) and sex
 - [x] Physical activity level
 - [x] BMI calculation
-- [ ] Basal Metabolic Rate (BMR) — Harris-Benedict equation
-- [ ] Total Daily Energy Expenditure (TDEE = BMR × activity factor)
+- [x] Basal Metabolic Rate (BMR) — Harris-Benedict equation (1984 revision, matches WebDiet)
+- [x] Total Daily Energy Expenditure (TDEE = BMR × activity factor)
 - [ ] Input validation
 
 ### Phase 2 – Macronutrients
@@ -59,7 +59,7 @@ python diet_calculator.py
 | Calculation | Formula |
 |---|---|
 | BMI (Body Mass Index) | weight (kg) ÷ height (m)² |
-| BMR (Basal Metabolic Rate) | Harris-Benedict equation *(version to be confirmed)* |
+| BMR (Basal Metabolic Rate) | Harris-Benedict, revised by Roza & Shizgal (1984) |
 | TDEE (Total Daily Energy Expenditure) | BMR × activity factor |
 
 ## 📚 References
