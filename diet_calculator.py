@@ -13,15 +13,29 @@ ACTIVITY_FACTORS = {
     4: 1.725, 
     5: 1.9}
 
+# Harris-Benedict revised (Roza & Shizgal, 1984)
+BMR_COEFFICIENTS = {
+    "male": {"base": 88.362, "weight": 13.397, "height": 4.799, "age": 5.677},
+    "female": {"base": 447.593, "weight":9.247, "height": 3.098, "age": 4.330},
+}
+
 
 def calculate_bmi(weight, height_cm):
     return weight / (height_cm / 100) ** 2
 
 
+def calculate_bmr(sex, weight, height_cm, age):
+    # get the coefficients for this sex (male or female)
+    coef = BMR_COEFFICIENTS[sex]
+    # Harris-Benedict formula
+    bmr = (coef["base"] + coef["weight"] * weight + coef["height"] * height_cm - coef["age"] * age)
+    return bmr
+   
+
 if TEST_MODE:
     #fixed values just for testing
-    age = 22
-    weight = 70.0
+    age = 21
+    weight = 72.0
     height = 173.0
     sex = "male"
     activity = 3
@@ -44,8 +58,11 @@ else:
 
 activity_factor = ACTIVITY_FACTORS[activity]
 bmi = calculate_bmi(weight, height)
+bmr = calculate_bmr(sex, weight, height, age)
 
 #show data
 print(f"Age: {age} | Weight: {weight} kg | Height: {height} cm | Sex: {sex} | Activity: {activity} | Factor: {activity_factor}")
 print(f"BMI: {bmi:.2f}")
+print(f"BMR: {bmr:.0f} kcal/day")
+
 

@@ -32,7 +32,7 @@ python diet_calculator.py
 ### Phase 1 – Calculator *(in progress)*
 - [x] User input: age, weight (kg), height (cm) and sex
 - [x] Physical activity level
-- [ ] BMI calculation
+- [x] BMI calculation
 - [ ] Basal Metabolic Rate (BMR) — Harris-Benedict equation
 - [ ] Total Daily Energy Expenditure (TDEE = BMR × activity factor)
 - [ ] Input validation
