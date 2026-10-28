@@ -13,6 +13,11 @@ ACTIVITY_FACTORS = {
     4: 1.725, 
     5: 1.9}
 
+
+def calculate_bmi(weight, height_cm):
+    return weight / (height_cm / 100) ** 2
+
+
 if TEST_MODE:
     #fixed values just for testing
     age = 22
@@ -35,8 +40,12 @@ else:
     print("4 - Intense (6-7 days/week)")
     print("5 - Very intense (twice a day or heavy physical work)")
     activity = int(input("Enter your activity level: "))
+    
 
 activity_factor = ACTIVITY_FACTORS[activity]
+bmi = calculate_bmi(weight, height)
 
 #show data
 print(f"Age: {age} | Weight: {weight} kg | Height: {height} cm | Sex: {sex} | Activity: {activity} | Factor: {activity_factor}")
+print(f"BMI: {bmi:.2f}")
+
