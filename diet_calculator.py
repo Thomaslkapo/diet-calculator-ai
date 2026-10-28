@@ -1,7 +1,7 @@
 # === TEST MODE ===
 #True = uses fixed test values (no typing)
 #False = asks the user (normal program)
-TEST_MODE = True
+TEST_MODE = False
 
 ACTIVITY_FACTORS = {
     # activity level: factor
@@ -37,6 +37,20 @@ def calculate_tdee(bmr, activity_factor):
     return tdee
 
 
+def ask_number(prompt, number_type):
+    # keep asking until the user types a valid number greater than 0
+    while True:
+        try:
+            text = input(prompt).replace(",", ".")
+            number = number_type(text)
+            if number <= 0:
+                print("Invalid! Please type a number greater than 0")
+            else:
+                return number
+        except ValueError:
+            print("Invalid! Please type a valid value")
+
+
 if TEST_MODE:
     #fixed values just for testing
     age = 21
@@ -47,35 +61,9 @@ if TEST_MODE:
 
 else:
     # real program: asks the user
-    while True:
-        try:
-            age = int(input("Enter your age: "))
-            if age <= 0:
-                print("Invalid! Please type a valid age")
-            else:
-                break
-        except ValueError:
-            print("Invalid! Please type a whole number (e.g. 22)")
-
-    while True:
-        try:
-            weight = float(input("Enter your weight in kg: ").replace(",", "."))
-            if weight <= 0:
-                print("Invalid! Please type a valid weight")
-            else:
-                break
-        except ValueError:
-            print("Invalid! Please type a valid value (e.g. 65 or 65.5)")
-
-    while True:
-        try:
-            height = float(input("Enter your height in cm: ").replace(",", "."))
-            if height <= 0:
-                print("Invalid! Please type a valid height")
-            else:
-                break
-        except ValueError:
-            print("Invalid! Please type a valid value (e.g. 170 or 170.5)")
+    age = ask_number("Enter your age: ", int)
+    weight = ask_number("Enter your weight in kg: ", float)
+    height = ask_number("Enter your height in cm: ", float)
 
     while True:
         sex = input("Enter your sex (male/female): ").lower()
