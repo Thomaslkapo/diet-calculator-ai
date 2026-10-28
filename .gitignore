@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 
-# virtual environment
+# virtual enviroment
 .venv/
 
 # secret keys (API keys, passwords)
