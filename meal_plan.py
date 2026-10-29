@@ -1,6 +1,17 @@
 import csv
+import json
+
+import truststore
+from dotenv import load_dotenv
+from google import genai
 
 TACO_FILE = "data/taco.csv"
+MODEL = "gemini-3.1-flash-lite"
+
+# use Windows' trusted certificates (needed when an antivirus inspects HTTPS)
+truststore.inject_into_ssl()
+# reads the .env file and loads GEMINI_API_KEY
+load_dotenv()
 
 
 def to_number(text):
@@ -29,6 +40,7 @@ def food_macros(food, grams):
         "fat": to_number(food["fat"]) * factor,
     }
 
+
 def plan_totals(plan, foods):
     # adds up the macros of every food in the plan
     totals = {"kcal": 0.0, "protein": 0.0, "carbs": 0.0, "fat": 0.0}
@@ -47,19 +59,52 @@ def compare_with_targets(totals, targets):
         print(f"{key}: {totals[key]:.0f} / {targets[key]:.0f} (difference {difference:+.0f})")
 
 
-foods = load_foods()
+def food_list_text(foods):
+    # one line per food: id;name;kcal;protein;carbs;fat (per 100 g)
+    lines = []
+    for food in foods.values():
+        if food["kcal"] == "":
+            continue
+        lines.append(f"{food['id']};{food['food']};{food['kcal']};{food['protein']};{food['carbs']};{food['fat']}")
+    return "\n".join(lines)
 
-# test plan (later this will come from the AI)
-plan = [
-    {"id": "3", "grams": 150},
-    {"id": "410", "grams": 200},
-    {"id": "488", "grams": 100},
-    {"id": "182", "grams": 100},
-]
+
+def ask_ai_for_plan(foods, targets):
+    # the AI only chooses foods and grams; Python checks the math afterwards
+    prompt = f"""You are a nutritionist building a one-day meal plan for a Brazilian person.
+Daily targets: {targets['kcal']} kcal, {targets['protein']} g protein, {targets['carbs']} g carbs, {targets['fat']} g fat.
+Use ONLY foods from the list below. Values are per 100 g, in the format id;food;kcal;protein;carbs;fat.
+Use common foods for breakfast, lunch, afternoon snack and dinner, and try to hit the targets.
+Answer only with a JSON list where each item is: {{"meal": "...", "id": "...", "grams": number}}
+
+{food_list_text(foods)}"""
+
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config={"response_mime_type": "application/json"},
+    )
+    plan = json.loads(response.text)
+    for item in plan:
+        # ids in taco.csv are text, so make sure the AI's ids are text too
+        item["id"] = str(item["id"])
+    return plan
+
+
+def print_plan(plan, foods):
+    # shows each food of the plan with its meal and grams
+    for item in plan:
+        print(f"{item['meal']}: {item['grams']} g {foods[item['id']]['food']}")
+
+
+foods = load_foods()
 
 # targets from diet_calculator.py (test mode)
 targets = {"kcal": 2187, "protein": 144, "carbs": 241, "fat": 72}
 
+plan = ask_ai_for_plan(foods, targets)
+print_plan(plan, foods)
+print()
 totals = plan_totals(plan, foods)
 compare_with_targets(totals, targets)
-
