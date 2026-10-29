@@ -1,6 +1,6 @@
 # 🥗 AI Diet Calculator
 
-A personal Python project that calculates daily energy expenditure and, in the future, will suggest diet plans using AI grounded in a reliable nutrition database.
+A personal Python project that calculates daily energy expenditure and macronutrient targets and, in the future, will suggest diet plans using AI grounded in a reliable nutrition database.
 
 > 🚧 **Work in progress** — I'm learning Python and building this project step by step.
 
@@ -37,8 +37,15 @@ python diet_calculator.py
 - [x] Total Daily Energy Expenditure (TDEE = BMR × activity factor)
 - [x] Input validation
 
-### Phase 2 – Macronutrients
-- [ ] Split calories into protein, carbohydrates and fat
+### Phase 2 – Macronutrients ✅ *(done)*
+- [x] Calorie deficit (%) applied over the TDEE
+- [x] Protein and fat goals in grams per kg of body weight
+- [x] Carbohydrates calculated from the remaining calories
+- [x] Warning when protein and fat exceed the target calories
+
+**Coming next:**
+- [ ] Option to split macros by percentage
+- [ ] Low/high carb days (carb cycling)
 
 ### Phase 3 – AI Assistant
 - [ ] Use TBCA (Brazilian Food Composition Table) as the knowledge base
@@ -61,6 +68,11 @@ python diet_calculator.py
 | BMI (Body Mass Index) | weight (kg) ÷ height (m)² |
 | BMR (Basal Metabolic Rate) | Harris-Benedict, revised by Roza & Shizgal (1984) |
 | TDEE (Total Daily Energy Expenditure) | BMR × activity factor |
+| Target calories | TDEE × (1 − deficit % ÷ 100) |
+| Protein / Fat (g) | body weight (kg) × g/kg goal |
+| Carbohydrates (g) | (target calories − protein kcal − fat kcal) ÷ 4 |
+
+> Energy per gram: protein 4 kcal · carbohydrates 4 kcal · fat 9 kcal
 
 ## 📚 References
 
