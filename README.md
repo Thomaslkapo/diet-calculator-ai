@@ -1,6 +1,6 @@
 # 🥗 AI Diet Calculator
 
-A Python project that calculates energy expenditure and macronutrient targets, and includes an **AI diet assistant** that answers food substitution questions in plain Portuguese, using **RAG** over the official Brazilian food composition table (TACO) and **exact calculations done in Python**.
+A Python project that calculates energy expenditure and macronutrient targets, and includes an **AI diet assistant** that answers food substitution questions and builds meal plans in plain Portuguese, using **RAG** over the official Brazilian food composition table (TACO) and **exact calculations done in Python**.
 
 > 🚧 **Work in progress** — I'm learning Python and building this project step by step.
 
@@ -10,7 +10,7 @@ I follow a diet with fixed macros, and in my day-to-day life the same problem ke
 
 Answering that meant looking up both foods in a nutrition table and doing the macro math by hand — every single time. It took time, and it was easy to get wrong.
 
-So I built an assistant that does it for me: I ask the question the way I would ask a person, and it finds the foods in a reliable table and calculates the exact amount.
+So I built an assistant that does it for me: I ask the question the way I would ask a person, and it finds the foods in a reliable table and calculates the exact amount. It also builds a full day of meals from the foods I choose, adjusting the grams until the plan hits my targets.
 
 It started as a rebuild of the calculations I used to do on WebDiet (BMI, basal metabolic rate, daily calories and macros) and grew into an AI project I actually use every day.
 
@@ -19,6 +19,7 @@ It started as a rebuild of the calculations I used to do on WebDiet (BMI, basal 
 ```
 $ python assistant.py
 Diet assistant (type 'sair' to quit)
+Your targets: 2187 kcal | protein 144 g | carbs 241 g | fat 72 g
 
 Você: não comi 2 pãezinhos hoje, quanto de arroz posso comer no lugar?
 
@@ -29,9 +30,21 @@ branco cozido (tipo 1).
 Você: e se fosse banana?
 
 Assistente: Você pode comer cerca de 225 g de banana prata.
+
+Você: café 2 pães, almoço 150 g arroz e 200 g frango cru, jantar 2 ovos cozidos,
+completa com carbo
+
+Assistente:
+café: 292 g Pão, trigo, francês
+almoço: 437 g Arroz, tipo 1, cozido
+almoço: 387 g Frango, peito, sem pele, cru
+jantar: 200 g Ovo, de galinha, inteiro, cozido
+kcal: 2189 / 2187 | protein: 144 / 144 | carbs: 295 / 241 | fat: 41 / 72
+A gordura ficou abaixo da meta, então os carboidratos completaram as calorias.
+Para chegar perto dos 72 g, inclua uma fonte de gordura, como azeite.
 ```
 
-Behind the scenes, the AI searched the TACO table for "pão francês" and "arroz cozido", picked the right foods, and called a Python function to calculate the grams. **The AI never does the math.**
+Behind the scenes, the AI searched the TACO table for every food in one call, picked the right ones, and called Python functions to calculate the grams. **The AI never does the math.**
 
 ## 🧠 How it works
 
@@ -46,12 +59,41 @@ AI agent (Gemini + LangChain, ReAct pattern)
         │                     (Gemini embeddings + FAISS vector store)
         │                     "pãozinho" → Pão, trigo, francês
         │
-        └──► substitute_food  exact macro math in Python, with TACO values
-                              100 g French bread = 209 g rice (same carbs)
+        ├──► substitute_food  exact macro math in Python, with TACO values
+        │                     100 g French bread = 209 g rice (same carbs)
+        │
+        └──► build_plan       adjusts the grams of a full day of meals
+                              to the user's targets (see below)
         │
         ▼
 AI answers using the tool results
 ```
+
+### Building a meal plan
+
+The user chooses the foods; the AI finds them in the table and picks a **mode** from the way the user asks; Python adjusts the grams:
+
+| The user says | Mode | What Python does |
+|---|---|---|
+| *(nothing special)* | `macros` | hits protein, carbs and fat |
+| "completa com carbo" / "completa com gordura" | `fill_carbs` / `fill_fat` | hits protein and calories; what the foods can't give in the other macros is completed with carbs (or fat) |
+| "o resto das kcal coloca em pão" | `fill_food` | keeps every amount and puts all the missing calories in that one food |
+| "só as calorias" | `calories` | scales every portion by the same factor |
+
+How the adjustment works (`fit_macros` in `meal_plan.py`):
+- Each food joins the group of its **main macro** (the one that gives it the most calories): chicken → protein, rice → carbs, egg → fat.
+- Group by group (protein → fat → carbs), all portions in the group are multiplied by the factor that makes that macro hit its target. Since foods have more than one macro, the loop repeats until every group settles (it usually converges in about 5 rounds).
+- **Portion limits:** a portion stays between **0.5× and 2×** of its starting amount, so the plan never turns into 600 g of eggs. In the fill modes, the group that fills the plan (carbs or fat) can grow past 2×, because the user asked for it.
+- **Fixed foods:** "quero comer exatamente 150 g de frango" locks that food; Python never changes it.
+- Low-calorie foods (under 50 kcal per 100 g, like vegetables) keep their portion.
+- Grams are rounded to whole numbers — the precision of a kitchen scale.
+
+### Reliability
+
+- **Fewer requests:** `search_food` takes a list, so the AI looks up every food of a plan in a single tool call (batching) instead of one call per food. That cuts the requests to the model by about half per question, which matters on the free tier's limit of 15 requests per minute.
+- **Errors don't end the conversation:** if the API fails (rate limit `429`, server overload), the assistant explains it and the chat goes on.
+- **Tools check the AI's input:** an id that doesn't exist, a fill food that isn't in the plan, or a plan where every food is locked returns a message to the AI, which fixes the call by itself.
+- **Exact choices with `Literal`:** the mode argument only accepts the listed values, so the model can't invent a new one.
 
 **Why the AI doesn't do the math:** language models are good at understanding requests and choosing foods, but they are not calculators. In an early experiment, I asked the AI to build a full-day meal plan for a 2187 kcal target: the plan it returned added up to **3407 kcal** when Python checked it against the TACO values. So the project splits the work:
 
@@ -81,15 +123,17 @@ Create a `.env` file in the project folder with your key (it is in `.gitignore`,
 GEMINI_API_KEY=your_key_here
 ```
 
-Then:
+Then calculate your targets and save your data (age, weight, height, activity, deficit and protein/fat goals) — answer `yes` at the end:
 
 ```bash
-python assistant.py          # AI diet assistant (food substitutions)
-python diet_calculator.py    # BMI, BMR, TDEE and macro targets
+python diet_calculator.py    # BMI, BMR, TDEE and macro targets → saves profile.json
+python assistant.py          # AI diet assistant (substitutions and meal plans)
 python food_search.py        # try the semantic food search
 ```
 
-> 💡 `diet_calculator.py` has a `TEST_MODE` switch at the top: `True` runs with fixed sample values, `False` asks for your data in the terminal.
+The assistant reads `profile.json` and calculates your targets every time it starts. Your data stays on your computer: `profile.json` is in `.gitignore`. To try the assistant with sample data, copy `profile.example.json` to `profile.json`.
+
+> 💡 `diet_calculator.py` has a `TEST_MODE` switch at the top: `True` runs with fixed sample values (and doesn't save a profile), `False` asks for your data in the terminal.
 
 The search index (`data/food_index/`) is already included. To rebuild the data from scratch (optional):
 
@@ -127,9 +171,13 @@ python scripts/build_index.py      # creates the embeddings index (~7 min on the
 - [x] Food substitution by macronutrient (exact calculation in Python)
 - [x] RAG: semantic food search with embeddings and a FAISS vector store
 - [x] AI agent (LangChain, ReAct) that uses search and substitution as tools
+- [x] Meal plan building as an agent tool, with Python adjusting portions to hit the targets
+- [x] Plan modes: every macro, fill with carbs or fat, fill with a chosen food, calories only
+- [x] Portion limits and fixed foods
+- [x] Connect the assistant to the user's own targets (saved profile, kept out of the repository)
+- [x] Batched food search and API error handling
 - [ ] Raw ↔ cooked weight conversion as a dedicated tool
-- [ ] Meal plan building as an agent tool, with Python adjusting portions to hit the targets
-- [ ] Connect the assistant to the user's own macro targets from the calculator
+- [ ] Update the profile by chatting ("agora estou com 70 kg")
 
 ### Phase 4 – API & Deployment
 - [ ] REST API with FastAPI
@@ -148,10 +196,11 @@ python scripts/build_index.py      # creates the embeddings index (~7 min on the
 
 ```
 diet-calculator-ai/
-├── assistant.py               # AI diet assistant: LangChain agent with search + substitution tools
+├── assistant.py               # AI diet assistant: LangChain agent with search, substitution and meal plan tools
 ├── food_search.py             # RAG retrieval: semantic search over TACO foods
-├── meal_plan.py               # food lookup, portion macros, plan totals, substitution, AI meal plan
-├── diet_calculator.py         # BMI, BMR, TDEE and macro targets
+├── meal_plan.py               # portion macros, plan totals, substitution, portion fitting (fit_macros, fill modes)
+├── diet_calculator.py         # BMI, BMR, TDEE and macro targets; saves/loads the user's profile
+├── profile.example.json       # sample profile (your own profile.json stays out of Git)
 ├── data/
 │   ├── raw/
 │   │   └── taco_4a_edicao_2011.xls   # official TACO spreadsheet (unchanged)
@@ -193,6 +242,8 @@ Result: only 14 of 597 foods are flagged, all explained by TACO itself (alcoholi
 | Carbohydrates (g) | (target calories − protein kcal − fat kcal) ÷ 4 |
 | Macros of a portion | value per 100 g × grams ÷ 100 |
 | Substitution (g of new food) | macro in the old portion ÷ macro per 100 g of the new food × 100 |
+| Group factor (fit_macros) | (macro target − macro from the other foods) ÷ macro from the group |
+| Fill food (g) | (target calories − calories of the other foods) ÷ kcal per 100 g × 100 |
 
 > Energy per gram: protein 4 kcal · carbohydrates 4 kcal · fat 9 kcal
 

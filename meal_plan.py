@@ -183,13 +183,9 @@ def fit_with_fill(plan, foods, targets, fill_with, rounds=10):
     # hits protein and calories: what the foods can't reach in the other macros
     # is moved, in calories, to the `fill_with` macro ("carbs" or "fat"),
     # whose foods have no MAX_FACTOR limit: the user asked them to fill the plan
+    # (a macro the foods can't reach just keeps its foods at the MAX_FACTOR limit)
     fitted = fit_macros(plan, foods, targets, unlimited=fill_with)
-    totals = plan_totals(fitted, foods)
     new_targets = dict(targets)
-    for macro in KCAL_PER_GRAM:
-        if macro != fill_with and totals[macro] < targets[macro] - 1:
-            # this macro can't be reached with these foods: keep what they give
-            new_targets[macro] = totals[macro]
     for _ in range(rounds):
         missing_kcal = targets["kcal"] - plan_totals(fitted, foods)["kcal"]
         if abs(missing_kcal) < 1:
