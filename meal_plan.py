@@ -98,12 +98,6 @@ def print_plan(plan, foods):
         print(f"{item['meal']}: {item['grams']} g {foods[item['id']]['food']}")
 
 
-foods = load_foods()
-
-# targets from diet_calculator.py (test mode)
-targets = {"kcal": 2187, "protein": 144, "carbs": 241, "fat": 72}
-
-
 def substitute(foods, old_id, old_grams, new_id, macro):
     # grams of the new food that give the same amount of `macro` as the old food
     amount = food_macros(foods[old_id], old_grams)[macro]
@@ -114,22 +108,28 @@ def substitute(foods, old_id, old_grams, new_id, macro):
     return amount / new_per_100g * 100
 
 
-#plan = ask_ai_for_plan(foods, targets)
-#print_plan(plan, foods)
-#print()
-#totals = plan_totals(plan, foods)
-#compare_with_targets(totals, targets)
-# substitution tests
-rice_to_banana = substitute(foods, "3", 200, "182", "carbs")
-print(f"200 g rice = {rice_to_banana:.0f} g banana (carbs)")
+if __name__ == "__main__":
+    foods = load_foods()
 
-bread_to_rice = substitute(foods, "53", 100, "3", "carbs")
-print(f"2 French breads (100 g) = {bread_to_rice:.0f} g rice (carbs)")
+    # targets from diet_calculator.py (test mode)
+    targets = {"kcal": 2187, "protein": 144, "carbs": 241, "fat": 72}
 
-cheese_to_egg = substitute(foods, "461", 50, "488", "protein")
-print(f"50 g minas cheese = {cheese_to_egg:.0f} g boiled egg (protein)")
+    #plan = ask_ai_for_plan(foods, targets)
+    #print_plan(plan, foods)
+    #print()
+    #totals = plan_totals(plan, foods)
+    #compare_with_targets(totals, targets)
+    # substitution tests
+    rice_to_banana = substitute(foods, "3", 200, "182", "carbs")
+    print(f"200 g rice = {rice_to_banana:.0f} g banana (carbs)")
 
-cooked_to_raw = substitute(foods, "408", 150, "409", "protein")
-print(f"150 g cooked chicken = {cooked_to_raw:.0f} g raw chicken (protein)")
+    bread_to_rice = substitute(foods, "53", 100, "3", "carbs")
+    print(f"2 French breads (100 g) = {bread_to_rice:.0f} g rice (carbs)")
 
-print(substitute(foods, "3", 200, "410", "carbs"))
+    cheese_to_egg = substitute(foods, "461", 50, "488", "protein")
+    print(f"50 g minas cheese = {cheese_to_egg:.0f} g boiled egg (protein)")
+
+    cooked_to_raw = substitute(foods, "408", 150, "409", "protein")
+    print(f"150 g cooked chicken = {cooked_to_raw:.0f} g raw chicken (protein)")
+
+    print(substitute(foods, "3", 200, "410", "carbs"))
