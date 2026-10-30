@@ -135,6 +135,12 @@ The assistant reads `profile.json` and calculates your targets every time it sta
 
 > 💡 `diet_calculator.py` has a `TEST_MODE` switch at the top: `True` runs with fixed sample values (and doesn't save a profile), `False` asks for your data in the terminal.
 
+Run the automated tests (they check every calculation, with no API calls):
+
+```bash
+pytest
+```
+
 The search index (`data/food_index/`) is already included. To rebuild the data from scratch (optional):
 
 ```bash
@@ -188,6 +194,7 @@ python scripts/build_index.py      # creates the embeddings index (~7 min on the
 - **Language:** Python
 - **AI:** Google Gemini (chat model and embeddings, free tier)
 - **Framework:** LangChain (agent, tools, vector store integration)
+- **Tests:** pytest
 - **Vector store:** FAISS
 - **Data:** TACO table — xlrd (reading the official spreadsheet), csv
 - **Planned:** FastAPI
@@ -212,6 +219,10 @@ diet-calculator-ai/
 │   ├── validate_taco.py       # checks calories against macronutrients
 │   ├── build_index.py         # builds data/food_index with Gemini embeddings
 │   └── hello_ai.py            # first connection test with the Gemini API
+├── tests/
+│   ├── test_diet_calculator.py   # BMI, BMR, TDEE and targets (WebDiet reference case)
+│   └── test_meal_plan.py         # substitution, portion fitting, limits, fixed foods, fill modes
+├── pytest.ini
 └── requirements.txt
 ```
 

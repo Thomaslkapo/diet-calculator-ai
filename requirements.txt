@@ -7,3 +7,4 @@ langchain-google-genai==4.4.2
 langchain-community==0.4.2
 faiss-cpu==1.15.1
 langchain==1.4.7
+pytest==9.2.0
