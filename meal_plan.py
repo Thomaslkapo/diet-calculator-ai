@@ -108,17 +108,78 @@ def substitute(foods, old_id, old_grams, new_id, macro):
     return amount / new_per_100g * 100
 
 
+def scale_plan(plan, foods, target_kcal):
+    # grows or shrinks every portion by the same factor so the plan hits the calorie target
+    totals = plan_totals(plan, foods)
+    factor = target_kcal / totals["kcal"]
+    scaled = []
+    for item in plan:
+        # round to whole grams, the precision of a kitchen scale
+        grams = round(item["grams"] * factor)
+        scaled.append({"meal": item["meal"], "id": item["id"], "grams": grams})
+    return scaled
+
+
+KCAL_PER_GRAM = {"protein": 4, "carbs": 4, "fat": 9}
+LOW_KCAL_LIMIT = 50  # foods under this (kcal per 100 g), like vegetables, keep their portion
+
+
+def main_macro(food):
+    # the macro that gives the most calories in this food: "protein", "carbs" or "fat"
+    kcal_from = {}
+    for macro in KCAL_PER_GRAM:
+        kcal_from[macro] = to_number(food[macro]) * KCAL_PER_GRAM[macro]
+    return max(kcal_from, key=kcal_from.get)
+
+
+def fit_macros(plan, foods, targets, rounds=50):
+    # adjusts the grams group by group (protein, then fat, then carbs) until every macro hits its target
+    fitted = [dict(item) for item in plan]
+    for _ in range(rounds):
+        for macro in ["protein", "fat", "carbs"]:
+            group = []
+            for item in fitted:
+                food = foods[item["id"]]
+                if to_number(food["kcal"]) >= LOW_KCAL_LIMIT and main_macro(food) == macro:
+                    group.append(item)
+            from_group = plan_totals(group, foods)[macro]
+            if from_group == 0:
+                continue
+            from_others = plan_totals(fitted, foods)[macro] - from_group
+            factor = max(targets[macro] - from_others, 0) / from_group
+            for item in group:
+                item["grams"] *= factor
+    for item in fitted:
+        # round to whole grams, the precision of a kitchen scale
+        item["grams"] = round(item["grams"])
+    return fitted
+
+
 if __name__ == "__main__":
     foods = load_foods()
 
     # targets from diet_calculator.py (test mode)
     targets = {"kcal": 2187, "protein": 144, "carbs": 241, "fat": 72}
 
-    #plan = ask_ai_for_plan(foods, targets)
-    #print_plan(plan, foods)
-    #print()
-    #totals = plan_totals(plan, foods)
-    #compare_with_targets(totals, targets)
+    plan = ask_ai_for_plan(foods, targets)
+    print_plan(plan, foods)
+    print()
+    totals = plan_totals(plan, foods)
+    compare_with_targets(totals, targets)
+
+    print("\nOnly calories (scale_plan):")
+    scaled = scale_plan(plan, foods, targets["kcal"])
+    print_plan(scaled, foods)
+    print()
+    compare_with_targets(plan_totals(scaled, foods), targets)
+
+    print("\nEvery macro (fit_macros):")
+    fitted = fit_macros(plan, foods, targets)
+    print_plan(fitted, foods)
+    print()
+    compare_with_targets(plan_totals(fitted, foods), targets)
+    print()
+
     # substitution tests
     rice_to_banana = substitute(foods, "3", 200, "182", "carbs")
     print(f"200 g rice = {rice_to_banana:.0f} g banana (carbs)")
