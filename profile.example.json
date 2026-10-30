@@ -1,0 +1,10 @@
+{
+    "age": 21,
+    "weight": 72.0,
+    "height": 173.0,
+    "sex": "male",
+    "activity": 3,
+    "deficit": 20,
+    "protein_per_kg": 2,
+    "fat_per_kg": 1
+}

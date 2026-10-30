@@ -5,14 +5,19 @@ from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
+from diet_calculator import calculate_targets, load_profile
 from food_search import load_index, search_foods
 from meal_plan import MODEL, fit_macros, fit_with_fill, load_foods, plan_totals, scale_plan, substitute
 
 foods = load_foods()
 index = load_index()
 
-# targets from diet_calculator.py (test mode)
-TARGETS = {"kcal": 2187, "protein": 144, "carbs": 241, "fat": 72}
+try:
+    # your real targets, from the data saved by diet_calculator.py
+    TARGETS = calculate_targets(load_profile())
+except FileNotFoundError:
+    print("profile.json not found: run diet_calculator.py first and save your data.")
+    raise SystemExit
 
 
 @tool
@@ -101,6 +106,7 @@ agent = create_agent(
 )
 
 print("Diet assistant (type 'sair' to quit)")
+print(f"Your targets: {TARGETS['kcal']} kcal | protein {TARGETS['protein']} g | carbs {TARGETS['carbs']} g | fat {TARGETS['fat']} g")
 messages = []
 while True:
     question = input("\nVocê: ")
