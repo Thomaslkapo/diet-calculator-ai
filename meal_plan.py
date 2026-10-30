@@ -142,9 +142,10 @@ def main_macro(food):
     return max(kcal_from, key=kcal_from.get)
 
 
-def fit_macros(plan, foods, targets, rounds=50):
+def fit_macros(plan, foods, targets, rounds=50, unlimited=None):
     # adjusts the grams group by group (protein, then fat, then carbs) until every macro hits its target,
-    # keeping every portion between MIN_FACTOR and MAX_FACTOR times its starting amount
+    # keeping every portion between MIN_FACTOR and MAX_FACTOR times its starting amount;
+    # the `unlimited` group ("carbs" or "fat") can grow past MAX_FACTOR
     fitted = [dict(item) for item in plan]
     for item in fitted:
         # remember the starting amount, to keep every portion within the limits
@@ -167,8 +168,10 @@ def fit_macros(plan, foods, targets, rounds=50):
             for item in group:
                 grams = item["grams"] * factor
                 lowest = item["start"] * MIN_FACTOR
-                highest = item["start"] * MAX_FACTOR
-                item["grams"] = min(max(grams, lowest), highest)
+                grams = max(grams, lowest)
+                if macro != unlimited:
+                    grams = min(grams, item["start"] * MAX_FACTOR)
+                item["grams"] = grams
     for item in fitted:
         # round to whole grams, the precision of a kitchen scale
         item["grams"] = round(item["grams"])
@@ -178,8 +181,9 @@ def fit_macros(plan, foods, targets, rounds=50):
 
 def fit_with_fill(plan, foods, targets, fill_with, rounds=10):
     # hits protein and calories: what the foods can't reach in the other macros
-    # is moved, in calories, to the `fill_with` macro ("carbs" or "fat")
-    fitted = fit_macros(plan, foods, targets)
+    # is moved, in calories, to the `fill_with` macro ("carbs" or "fat"),
+    # whose foods have no MAX_FACTOR limit: the user asked them to fill the plan
+    fitted = fit_macros(plan, foods, targets, unlimited=fill_with)
     totals = plan_totals(fitted, foods)
     new_targets = dict(targets)
     for macro in KCAL_PER_GRAM:
@@ -192,8 +196,30 @@ def fit_with_fill(plan, foods, targets, fill_with, rounds=10):
             break
         # move the missing calories to the fill macro and fit again
         new_targets[fill_with] += missing_kcal / KCAL_PER_GRAM[fill_with]
-        fitted = fit_macros(plan, foods, new_targets)
+        fitted = fit_macros(plan, foods, new_targets, unlimited=fill_with)
     return fitted
+
+
+def fill_with_food(plan, foods, target_kcal, fill_id):
+    # every food keeps its amount; the `fill_id` food gets all the calories still missing
+    # (if it is in more than one meal, the extra grams are split in proportion to each portion)
+    fill_items = [item for item in plan if item["id"] == fill_id]
+    others = [item for item in plan if item["id"] != fill_id]
+    missing_kcal = max(target_kcal - plan_totals(others, foods)["kcal"], 0)
+    fill_grams = missing_kcal / to_number(foods[fill_id]["kcal"]) * 100
+    start_grams = sum(item["grams"] for item in fill_items)
+    filled = []
+    for item in plan:
+        grams = item["grams"]
+        if item["id"] == fill_id:
+            if start_grams > 0:
+                share = item["grams"] / start_grams
+            else:
+                share = 1 / len(fill_items)
+            # round to whole grams, the precision of a kitchen scale
+            grams = round(fill_grams * share)
+        filled.append({"meal": item["meal"], "id": item["id"], "grams": grams})
+    return filled
 
 
 if __name__ == "__main__":

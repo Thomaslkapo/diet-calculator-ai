@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 from diet_calculator import calculate_targets, load_profile
 from food_search import load_index, search_foods
-from meal_plan import MODEL, fit_macros, fit_with_fill, load_foods, plan_totals, scale_plan, substitute
+from meal_plan import (
+    MODEL, fill_with_food, fit_macros, fit_with_fill, load_foods, plan_totals, scale_plan, substitute, to_number,
+)
 
 foods = load_foods()
 index = load_index()
@@ -21,16 +23,18 @@ except FileNotFoundError:
 
 
 @tool
-def search_food(query: str) -> str:
-    """Searches the TACO table for foods that match a description (e.g. "pãozinho").
-    Returns up to 8 candidates with their id and values per 100 g."""
+def search_food(queries: list[str]) -> str:
+    """Searches the TACO table for every food in the list at once (e.g. ["pãozinho", "frango cozido"]).
+    Returns up to 8 candidates per food, with their id and values per 100 g."""
     lines = []
-    for food_id, name in search_foods(index, query):
-        food = foods[food_id]
-        lines.append(
-            f"id {food_id}: {food['food']} | per 100 g: {food['kcal']} kcal, "
-            f"protein {food['protein']} g, carbs {food['carbs']} g, fat {food['fat']} g"
-        )
+    for query in queries:
+        lines.append(f"Results for '{query}':")
+        for food_id, name in search_foods(index, query):
+            food = foods[food_id]
+            lines.append(
+                f"id {food_id}: {food['food']} | per 100 g: {food['kcal']} kcal, "
+                f"protein {food['protein']} g, carbs {food['carbs']} g, fat {food['fat']} g"
+            )
     return "\n".join(lines)
 
 
@@ -52,17 +56,32 @@ class PlanItem(BaseModel):
 
 
 @tool
-def build_plan(items: list[PlanItem], mode: Literal["macros", "fill_carbs", "fill_fat", "calories"]) -> str:
+def build_plan(
+    items: list[PlanItem],
+    mode: Literal["macros", "fill_carbs", "fill_fat", "fill_food", "calories"],
+    fill_food_id: str = "",
+) -> str:
     """Adjusts the grams of a one-day meal plan to the user's targets, with exact math.
     mode: "macros" hits protein, carbs and fat;
     "fill_carbs" or "fill_fat" hits protein and calories, completing what is missing with carbs or fat;
+    "fill_food" keeps every amount and puts all the missing calories in one food (fill_food_id, which must be in items);
     "calories" only hits the calories."""
     plan = [{"meal": item.meal, "id": item.food_id, "grams": item.grams, "fixed": item.fixed} for item in items]
     for item in plan:
         if item["id"] not in foods:
             return f"id {item['id']} does not exist, use search_food to find the right id."
 
-    if mode == "calories":
+    if mode != "fill_food" and all(item["fixed"] for item in plan):
+        # with every food fixed, nothing can be adjusted
+        return "every food is fixed, so nothing can change: set fixed false on the foods that can change and call build_plan again."
+
+    if mode == "fill_food":
+        if fill_food_id not in [item["id"] for item in plan]:
+            return "fill_food_id must be the id of one of the items in the plan."
+        if to_number(foods[fill_food_id]["kcal"]) == 0:
+            return f"{foods[fill_food_id]['food']} has no calories, so it cannot fill the plan."
+        adjusted = fill_with_food(plan, foods, TARGETS["kcal"], fill_food_id)
+    elif mode == "calories":
         adjusted = scale_plan(plan, foods, TARGETS["kcal"])
     elif mode == "fill_carbs":
         adjusted = fit_with_fill(plan, foods, TARGETS, "carbs")
@@ -83,16 +102,25 @@ def build_plan(items: list[PlanItem], mode: Literal["macros", "fill_carbs", "fil
 SYSTEM_PROMPT = """You are a diet assistant for a Brazilian user.
 Always use search_food to find foods in the TACO table, and the other tools for any calculation.
 Never calculate nutrition values by yourself.
+Call search_food only once per question, with every food you need in the list.
 To build a meal plan: find every food with search_food, then call build_plan once with all of them.
 Choose the build_plan mode from what the user says:
 - "fill_carbs" when they ask to complete what is missing with carbs (e.g. "completa com carbo")
 - "fill_fat" when they ask to complete what is missing with fat (e.g. "completa com gordura")
+- "fill_food" when they ask to put the missing calories in one specific food
+  (e.g. "o resto das kcal coloca em pão francês"); set fill_food_id to that food's id
+  and use the amounts the user gave (or normal portions) for every other food
+Use "fill_food" only when the user names one specific food to receive the rest;
+"completa com carbo" names a macro, not a food, so it is always "fill_carbs" (and "completa com gordura" is "fill_fat").
 - "calories" when they only care about calories (e.g. "só as calorias")
 - "macros" in any other case
 Amounts the user mentions (e.g. "2 pãezinhos") are only a starting point that build_plan may adjust.
 Set fixed to true only for the specific food the user wants in that exact amount
 (e.g. "quero comer exatamente 150 g de frango", "exatamente 2 pães", "150 g de frango, não mexe");
 every other food stays with fixed false, even if the user gave an amount for it.
+In fill_food mode the other foods already keep their amounts: leave fixed false.
+When the user asks for a new version of a plan, start with fixed false for every food;
+only fix the foods the user says "exatamente" about in that new request.
 Show the plan and the totals exactly as build_plan returns them.
 If a macro is far from its target, tell the user and suggest a food rich in that macro.
 If none of the candidates matches what the user meant, say the food is not in the TACO table.
@@ -113,6 +141,15 @@ while True:
     if question.lower() == "sair":
         break
     messages.append({"role": "user", "content": question})
-    result = agent.invoke({"messages": messages})
+    try:
+        result = agent.invoke({"messages": messages})
+    except Exception as error:
+        # the question failed: take it out of the history so the conversation goes on clean
+        messages.pop()
+        if "RESOURCE_EXHAUSTED" in str(error):
+            print("\nAssistente: limite grátis do Gemini atingido. Espere 1 minuto e mande de novo.")
+        else:
+            print(f"\nAssistente: erro ao falar com o Gemini ({type(error).__name__}). Tente de novo.")
+        continue
     messages = result["messages"]
     print(f"\nAssistente: {messages[-1].text}")
